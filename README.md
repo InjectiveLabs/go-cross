@@ -1,19 +1,22 @@
 # go-cross
 
-`hinshun/go-cross` is a Docker image to cross compile golang binaries and plugins to linux/darwin. It is based off work from `docker/cli`:
+`docker.injective.dev/go-cross` is a Docker image to cross compile golang binaries and plugins to linux/darwin/windows.
+
+It is based off work from `docker/cli`:
 - https://hub.docker.com/r/dockercore/golang-cross
-- https://github.com/docker/cli/tree/ee461303f9e74937a0a598650249f4331b1dd498/scripts/build
+- https://github.com/docker/cli/tree/master/scripts/build
 
-# Cross-compiling using docker build
+## Cross-compiling using docker build
 
-Using `hinshun/go-cross:mod` to cache go modules and `hinshun/go-cross:build` that has [ONBUILD](https://docs.docker.com/engine/reference/builder/#onbuild) triggers you can define a `Dockerfile` with only the following:
+Using `docker.injective.dev/go-cross:mod` to cache go modules and `docker.injective.dev/go-cross:build` that has [ONBUILD](https://docs.docker.com/engine/reference/builder/#onbuild) triggers you can define a `Dockerfile` with only the following:
 
 ```Dockerfile
-FROM hinshun/go-cross:mod AS mod
-FROM hinshun/go-cross:build
+FROM docker.injective.dev/go-cross:mod AS mod
+FROM docker.injective.dev/go-cross:build
 ```
 
 For example, if my project looks like this:
+
 ```
 ❯ tree
 .
@@ -32,6 +35,7 @@ docker build -t my-cross-compile --build-arg PKG="./cmd/program" --build-arg BUI
 ```
 
 Extract the binaries by creating a temporary container and `docker cp` them out.
+
 ```sh
 mkdir bin
 docker create --name tmp my-cross-compile bash
@@ -39,17 +43,27 @@ docker cp tmp:/root/go/bin/. bin
 docker rm tmp
 ```
 
-## Private go modules
+## Private Go modules
+
 If you have private go modules, you can use that as long as the following are true:
 - The stage is set to `AS mod`
 - The go module cache is in `/root/.cache/go-build` and `/root/go/pkg/mod`
 
 ```Dockerfile
-FROM golang:1.11-alpine AS mod
+FROM golang:1.14-alpine AS mod
 ENV GOPATH=/root/go
 ENV GOCACHE=/root/.cache/go-build
-# Copy or mount in SSH, certificates, etc...
-RUN go mod download
+RUN apk add --no-cache git openssh
 
-FROM hinshun/go-cross:build
+# Copy or mount in SSH, certificates, etc...
+
+WORKDIR /src
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+RUN touch /mod
+
+FROM docker.injective.dev/go-cross:build
+# ensures that dependency on mod stage (1) is properly resolved
+COPY --from=mod /mod /mod
 ```
