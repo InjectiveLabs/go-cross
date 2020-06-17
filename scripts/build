@@ -17,6 +17,7 @@ export NAME="$(basename $1)"
 
 jobs=(
     "/cross/osx" \
+    "/cross/windows" \
     "GOOS=linux GOARCH=amd64 /cross/binary" \
 )
 
