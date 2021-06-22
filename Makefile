@@ -1,5 +1,10 @@
 all:
 
+base:
+	docker build -t docker.injective.dev/go-cross-base -f base/Dockerfile .
+	docker tag docker.injective.dev/go-cross-base gcr.io/injective-core/go-cross-base
+	docker tag docker.injective.dev/go-cross-base gcr.io/injective-core/go-cross-base:1.16.5
+
 main:
 	docker build -t docker.injective.dev/go-cross -f Dockerfile .
 	docker tag docker.injective.dev/go-cross gcr.io/injective-core/go-cross
@@ -14,9 +19,13 @@ build: main
 
 images: main mod build
 
-deploy: main mod build
+push-base: base
+	docker push gcr.io/injective-core/go-cross-base
+	docker push gcr.io/injective-core/go-cross-base:1.16.5
+
+push: main mod build
 	docker push gcr.io/injective-core/go-cross
 	docker push gcr.io/injective-core/go-cross:mod
 	docker push gcr.io/injective-core/go-cross:build
 
-.PHONY: main mod build push
+.PHONY: base push-base main mod build push
